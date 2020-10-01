@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-//import 'package:fluttertoast/fluttertoast.dart';
+import 'package:flutter/services.dart';
 import 'package:mappa_vita/database/database_helper.dart';
 import 'package:mappa_vita/provider/sheets.dart';
 import 'package:mappa_vita/provider/spreadsheet.dart';
 import 'package:mappa_vita/screens/sheet_screen.dart';
 import 'package:mappa_vita/widgets/drawer.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 enum FilterOptions {
   New,
@@ -150,64 +151,120 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  void _showExitDialogue() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(25.0),
+          ),
+          title:
+              Text("Are you sure want to exit !", textAlign: TextAlign.center),
+          actions: <Widget>[
+            Container(
+                height: 50,
+                width: 280,
+                child: Row(children: <Widget>[
+                  Expanded(
+                      child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: FlatButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: Text("Close"),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18.0),
+                          side: BorderSide(
+                              color: Theme.of(context).primaryColor)),
+                    ),
+                  )),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: FlatButton(
+                        onPressed: () {
+                          SystemChannels.platform
+                              .invokeMethod('SystemNavigator.pop');
+                        },
+                        child: Text("Exit"),
+                        color: Theme.of(context).primaryColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18.0),
+                        ),
+                      ),
+                    ),
+                  )
+                ]))
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: new AppBar(
-        title: new Center(
-          child: new Text(
-            "MappaVitte",
-            textAlign: TextAlign.center,
+        appBar: new AppBar(
+          title: new Center(
+            child: new Text(
+              "MappaVitte",
+              textAlign: TextAlign.center,
+            ),
           ),
+          actions: <Widget>[
+            IconButton(
+              icon: Icon(Icons.add),
+              onPressed: _showDialogue,
+            )
+          ],
         ),
-        actions: <Widget>[
-          IconButton(
-            icon: Icon(Icons.add),
-            onPressed: _showDialogue,
-          )
-        ],
-      ),
-      drawer: AppDrawer(),
-      body: Column(
-        children: <Widget>[
-          Expanded(
-            child: RefreshIndicator(
-                child: getSpreadsheetValues == null
-                    ? Center(
-                        child: Text(
-                        "Get Started ! ! ! :-)",
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, color: Colors.black26),
-                        textAlign: TextAlign.center,
-                      ))
-                    : ListView.builder(
-                        itemCount: getSpreadsheetValues == null
-                            ? 1
-                            : getSpreadsheetValues.length,
-                        itemBuilder: (context, index) {
-                          return ListTile(
-                            title: Text(getSpreadsheetValues[index]['name']),
-                            onTap: () {
-                              // Navigator.(context).pushNamed('/sheet-screen',
-                              //     arguments: SheetScreen(
-                              //         id: getSpreadsheet[index]['s_id']));
+        drawer: AppDrawer(),
+        body: WillPopScope(
+          onWillPop: onWillPop,
+          child: Column(
+            children: <Widget>[
+              Expanded(
+                child: RefreshIndicator(
+                    child: getSpreadsheetValues == null
+                        ? Center(
+                            child: Text(
+                            "Get Started ! ! ! :-)",
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black26),
+                            textAlign: TextAlign.center,
+                          ))
+                        : ListView.builder(
+                            itemCount: getSpreadsheetValues == null
+                                ? 1
+                                : getSpreadsheetValues.length,
+                            itemBuilder: (context, index) {
+                              return ListTile(
+                                title:
+                                    Text(getSpreadsheetValues[index]['name']),
+                                onTap: () {
+                                  // Navigator.(context).pushNamed('/sheet-screen',
+                                  //     arguments: SheetScreen(
+                                  //         id: getSpreadsheet[index]['s_id']));
 
-                              Navigator.of(context).push(MaterialPageRoute(
-                                builder: (context) {
-                                  return SheetScreen(
-                                      id: getSpreadsheet[index]['s_id']);
+                                  Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (context) {
+                                      return SheetScreen(
+                                          id: getSpreadsheet[index]['s_id']);
+                                    },
+                                  ));
                                 },
-                              ));
+                                trailing: Icon(Icons.arrow_forward_ios),
+                              );
                             },
-                            trailing: Icon(Icons.arrow_forward_ios),
-                          );
-                        },
-                      ),
-                onRefresh: refreshList),
-          )
-        ],
-      ),
-    );
+                          ),
+                    onRefresh: refreshList),
+              )
+            ],
+          ),
+        ));
   }
 
   @override
@@ -225,5 +282,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
       ), ModalRoute.withName('/'));
     });
+  }
+
+  Future<bool> onWillPop() async {
+    _showExitDialogue();
   }
 }

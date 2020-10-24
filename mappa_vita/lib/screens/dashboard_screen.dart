@@ -3,10 +3,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:mappa_vita/database/database_helper.dart';
 import 'package:mappa_vita/provider/sheets.dart';
-import 'package:mappa_vita/provider/spreadsheet.dart';
 import 'package:mappa_vita/screens/sheet_screen.dart';
 import 'package:mappa_vita/widgets/drawer.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 
 enum FilterOptions {
   New,
@@ -123,12 +121,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           if (link == '') {
                             Sheets sheet = new Sheets();
                             sheet.addSheets(myController.text);
+                            sheet.createFile(name);
                           } else {
                             var sliced;
                             Sheets sheet = new Sheets();
                             sliced = link.split('/')[5];
                             sheet.addSheetwithLink(name, sliced);
-                            print(sliced);
+                            sheet.createFile(name);
                           }
 
                           // Navigator.pushNamed(context, '/sheet-screen');
@@ -209,7 +208,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         appBar: new AppBar(
           title: new Center(
             child: new Text(
-              "MappaVitte",
+              "MappaVitta",
               textAlign: TextAlign.center,
             ),
           ),
@@ -238,21 +237,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ))
                         : ListView.builder(
                             itemCount: getSpreadsheetValues == null
-                                ? 1
+                                ? 0
                                 : getSpreadsheetValues.length,
                             itemBuilder: (context, index) {
                               return ListTile(
                                 title:
                                     Text(getSpreadsheetValues[index]['name']),
                                 onTap: () {
-                                  // Navigator.(context).pushNamed('/sheet-screen',
-                                  //     arguments: SheetScreen(
-                                  //         id: getSpreadsheet[index]['s_id']));
-
+                                  print(
+                                      "The name is ${getSpreadsheet[index]['name']}");
                                   Navigator.of(context).push(MaterialPageRoute(
                                     builder: (context) {
                                       return SheetScreen(
-                                          id: getSpreadsheet[index]['s_id']);
+                                        id: getSpreadsheet[index]['s_id'],
+                                        name: getSpreadsheet[index]['name'],
+                                      );
                                     },
                                   ));
                                 },

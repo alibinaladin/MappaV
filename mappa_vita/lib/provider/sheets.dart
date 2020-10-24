@@ -1,14 +1,19 @@
 import 'dart:core';
 import 'dart:io';
+
+import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:gsheets/gsheets.dart';
+import 'package:googleapis/drive/v3.dart' as ga;
 import 'package:googleapis/sheets/v4.dart' as v4;
-import 'package:googleapis/drive/v3.dart' as driveAPI;
+import 'package:gsheets/gsheets.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:mappa_vita/database/database_helper.dart';
 import 'package:mappa_vita/screens/sign_in.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart' as permission;
 
 class Sheets with ChangeNotifier {
   static const String URL =
@@ -64,6 +69,7 @@ class Sheets with ChangeNotifier {
     gsheets = GSheets(_credentials,
         scopes: [v4.SheetsApi.SpreadsheetsScope, v4.SheetsApi.DriveScope]);
     print(gsheets);
+
     var x = await gsheets.createSpreadsheet(name).then((value) async {
       print(value.id);
       await DatabaseHelper.instance.insert({
@@ -95,6 +101,7 @@ class Sheets with ChangeNotifier {
     var mysheet;
     gsheets = GSheets(_credentials,
         scopes: [v4.SheetsApi.SpreadsheetsScope, v4.SheetsApi.DriveScope]);
+
     final ss = await gsheets.spreadsheet(id);
     var sheet = await ss.worksheetByTitle(name);
     sheet ??= await ss.addWorksheet(name);
@@ -107,14 +114,84 @@ class Sheets with ChangeNotifier {
     final ss = await gsheets.spreadsheet(id);
     return await ss.sheets;
   }
+
+  Future<bool> deleteSheet(String name, String id) async {
+    gsheets = GSheets(_credentials,
+        scopes: [v4.SheetsApi.SpreadsheetsScope, v4.SheetsApi.DriveScope]);
+    // Worksheet sheet = gsheets.worksheetByTitle(name);
+    final ss = await gsheets.spreadsheet(id);
+    dynamic sheets = ss.sheets.worksheetByTitle(name);
+    print("The sheet ids adn $sheets");
+    ss.clear(name);
+    return await sheets;
+  }
+
+  Future<void> createFile(String name) async {
+    var excel = Excel.createExcel();
+    Sheet sheetObject = excel['Sheet1'];
+    Sheet sheetObject1 = excel['Sheet2'];
+    Sheet sheetObject2 = excel['Sheet3'];
+    Sheet sheetObject3 = excel['Sheet4'];
+
+    final directory = await getExternalStorageDirectory();
+    var status = await permission.Permission.storage.status;
+
+    if (status.isGranted) {
+      await excel.encode().then((value) {
+        File(join('${directory.path}/$name.xlsx'))
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(value);
+
+        uploadFileToGoogleDrive('${directory.path}/$name.xlsx', name);
+      });
+    } else {
+      Map<Permission, permission.PermissionStatus> statuses = (await [
+        permission.Permission.storage,
+      ].request())
+          .cast<Permission, permission.PermissionStatus>();
+    }
+  }
+
+  uploadFileToGoogleDrive(String directory, String name) async {
+    final GoogleSignInAccount googleSignInAccount = await googleSignIn.signIn();
+    var authClient = GoogleHttpClient(await googleSignInAccount.authHeaders);
+
+    var mydrive = ga.DriveApi(authClient);
+
+    final file = new File(directory);
+    var length;
+    Stream<List<int>> inputStream = file.openRead();
+
+    length = file.lengthSync();
+    var media = new ga.Media(inputStream, length);
+    var driveFile = new ga.File();
+    driveFile.name = "$name.xlsx";
+    final result = mydrive.files.create(driveFile, uploadMedia: media);
+
+    print("length is $result");
+  }
+
+  createExcelSheet(String fileName, String sheetName) async {
+    final directory = await getExternalStorageDirectory().then((value) {
+      var file = "${value.path}/$fileName.xlsx";
+      var bytes = File(file).readAsBytesSync();
+      var excel = Excel.decodeBytes(bytes);
+      Sheet sheetObject = excel["hiiiii"];
+      print("File name is $fileName and the sheet name is $sheetName");
+      print(excel);
+    });
+  }
 }
 
 class GoogleHttpClient extends IOClient {
   Map<String, String> _headers;
+
   GoogleHttpClient(this._headers) : super();
+
   @override
   Future<IOStreamedResponse> send(http.BaseRequest request) =>
       super.send(request..headers.addAll(_headers));
+
   @override
   Future<http.Response> head(Object url, {Map<String, String> headers}) =>
       super.head(url, headers: headers..addAll(_headers));

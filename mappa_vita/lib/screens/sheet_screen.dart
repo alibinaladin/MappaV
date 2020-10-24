@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:gsheets/gsheets.dart';
 import 'package:mappa_vita/provider/sheets.dart';
+import 'package:mappa_vita/screens/matrix-screen.dart';
 
 class SheetScreen extends StatefulWidget {
   static const routeName = '/sheet-screen';
 
   var id;
+  var name;
 
-  SheetScreen({Key key, @required this.id}) : super(key: key);
+  SheetScreen({Key key, @required this.id, @required this.name})
+      : super(key: key);
   @override
   _SheetScreenState createState() => _SheetScreenState();
 }
@@ -20,12 +24,14 @@ class _SheetScreenState extends State<SheetScreen> {
   List<Worksheet> getSheets;
   List<Worksheet> getSheetsValues;
   final myController = TextEditingController();
-
   var refreshKey = GlobalKey<RefreshIndicatorState>();
+  var worksheet;
+  List<List<String>> datas = [];
 
   @override
   void initState() {
     getWorksheetsById();
+    datas.insert(0, ['hiiii']);
     super.initState();
   }
 
@@ -88,15 +94,26 @@ class _SheetScreenState extends State<SheetScreen> {
                       child: FlatButton(
                         onPressed: () {
                           this.setState(() {
-                            Sheets sheet = new Sheets();
-                            var worksheet = sheet
-                                .createWorkSheet(widget.id, myController.text)
-                                .then((value) {
-                              // print(value.id);
-                              setState(() {});
-                              nameList.insert(
-                                  nameList.length, myController.text);
-                            });
+                            if (nameList.contains(myController.text)) {
+                              Fluttertoast.showToast(
+                                  msg:
+                                      "The name you entered is already exist !",
+                                  toastLength: Toast.LENGTH_LONG,
+                                  gravity: ToastGravity.BOTTOM,
+                                  timeInSecForIosWeb: 1,
+                                  backgroundColor: Colors.red,
+                                  textColor: Colors.white,
+                                  fontSize: 16.0);
+                            } else {
+                              worksheet = sheet
+                                  .createExcelSheet(
+                                      widget.name, myController.text)
+                                  .then((value) {
+                                print(value.name);
+                                refreshList();
+                                setState(() {});
+                              });
+                            }
                             // refreshSheets();
                             // getWorksheetsById();
                           });
@@ -174,13 +191,39 @@ class _SheetScreenState extends State<SheetScreen> {
   }
 
   Widget list(index) {
-    return ListTile(
-      title: Text(nameList[index]),
-      onTap: () {
-        print("The ontap id is");
-        print(sheetId[index]);
+    return Dismissible(
+      key: ValueKey(sheetId[index]),
+      onDismissed: (direction) {
+        Sheets sheet = new Sheets();
+        sheet.deleteSheet(nameList[index], sheetId[index]);
       },
-      trailing: Icon(Icons.arrow_forward_ios),
+      background: Container(
+        color: Theme.of(context).errorColor,
+        child: Icon(
+          Icons.delete,
+          color: Colors.white,
+          size: 40,
+        ),
+        alignment: Alignment.centerRight,
+        padding: EdgeInsets.only(right: 20),
+        margin: EdgeInsets.symmetric(
+          horizontal: 15,
+          vertical: 4,
+        ),
+      ),
+      direction: DismissDirection.endToStart,
+      child: ListTile(
+        title: Text(nameList[index]),
+        onTap: () {
+          print("The ontap id is");
+          print(sheetId[index]);
+
+          Navigator.of(context).push(MaterialPageRoute(builder: (context) {
+            return MatrixScreen();
+          }));
+        },
+        trailing: Icon(Icons.arrow_forward_ios),
+      ),
     );
   }
 
@@ -190,7 +233,6 @@ class _SheetScreenState extends State<SheetScreen> {
   }
 
   Future<void> refreshSheets() async {
-    print('executing the refresh .................!!!!!!!');
     nameList.clear();
     getSheets = await sheet.getWorksheets(widget.id).then((value) {
       this.setState(() {
